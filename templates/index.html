@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whiteboard AI App</title>
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            border: 2px solid black;
+        }
+        button {
+            margin: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Whiteboard AI App</h1>
+    <canvas id="whiteboard" width="800" height="400"></canvas>
+    <br>
+    <button onclick="clearBoard()">Clear</button>
+    <button onclick="useEraser()">Eraser</button>
+    <button onclick="useMarker()">Marker</button>
+    <button onclick="increaseBrushSize()">Increase Brush Size</button>
+    <button onclick="decreaseBrushSize()">Decrease Brush Size</button>
+    <button onclick="takeScreenshot()">Process</button>
+
+    <script>
+        const canvas = document.getElementById("whiteboard");
+        const ctx = canvas.getContext("2d");
+        let drawing = false;
+        let brushSize = 5;
+        let color = "black";
+
+        // Set initial white background to avoid black screenshot issue
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        canvas.addEventListener("mousedown", startDraw);
+        canvas.addEventListener("mousemove", draw);
+        canvas.addEventListener("mouseup", stopDraw);
+
+        function startDraw(e) {
+            drawing = true;
+            draw(e);
+        }
+
+        function draw(e) {
+            if (!drawing) return;
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(e.offsetX, e.offsetY, brushSize, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function stopDraw() {
+            drawing = false;
+            ctx.beginPath();
+        }
+
+        function clearBoard() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Set white background after clearing the board
+            ctx.fillStyle = "white";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function useEraser() {
+            color = "white";
+        }
+
+        function useMarker() {
+            color = "black";
+        }
+
+        function increaseBrushSize() {
+            brushSize += 2;
+        }
+
+        function decreaseBrushSize() {
+            if (brushSize > 2) brushSize -= 2;
+        }
+
+        function takeScreenshot() {
+            // First, draw the white background to the canvas before capturing it
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = canvas.height;
+            const tempCtx = tempCanvas.getContext('2d');
+
+            // Draw the white background
+            tempCtx.fillStyle = "white";
+            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+            // Copy the original canvas content on top of the white background
+            tempCtx.drawImage(canvas, 0, 0);
+
+            // Convert the temp canvas to data URL (base64 encoded image)
+            const screenshotData = tempCanvas.toDataURL();
+            console.log("Screenshot Data: ", screenshotData);
+
+            fetch('/process_image', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ image: screenshotData }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log("Response from AI: ", data);
+                if (data.text) {
+                    alert('AI Response: ' + data.text);
+                } else {
+                    alert('Failed to process image.');
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+    </script>
+</body>
+</html>
